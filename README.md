@@ -23,6 +23,8 @@ This end-to-end encrypted chat system implements:
 
 ### How to Use
 
+0. go to Main_chat
+
 1. Start the server:
    ```
    python chat.py
