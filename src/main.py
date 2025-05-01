@@ -1,7 +1,5 @@
 from client import ChatClient
 from server import ChatServer
-# from message import Message
-# from crypto import CryptoManager
 
 # main.py - Entry point
 def start_server():
@@ -25,12 +23,14 @@ def start_client():
         if chat_client.connect(username):
             print("Connected to server. Type 'quit' to exit.")
             print("To send a message, use format: @username message")
+            chat_client.show_prompt()  # Show initial prompt
 
             try:
                 while True:
-                    message = input(f"{username}> ").strip()
+                    message = input().strip()
 
                     if not message:
+                        chat_client.show_prompt()  # Re-show prompt after empty input
                         continue
 
                     if message.lower() == 'quit':
@@ -48,10 +48,13 @@ def start_client():
                                 raise ValueError
 
                             chat_client.send_message(recipient, content)
+                            chat_client.show_prompt()  # Show prompt again for next input
                         except ValueError:
-                            print("Invalid format. Use: @username message")
+                            chat_client.print_system_message("Invalid format. Use: @username message")
+                            chat_client.show_prompt()
                     else:
-                        print("Invalid format. Use: @username message")
+                        chat_client.print_system_message("Invalid format. Use: @username message")
+                        chat_client.show_prompt()
 
             except KeyboardInterrupt:
                 print("\nDisconnecting...")

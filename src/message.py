@@ -52,3 +52,16 @@ class ErrorMessage(Message):
     def __init__(self, message):
         super().__init__("error")
         self.message = message
+
+
+class KeyRequestMessage(Message):
+    def __init__(self, username):
+        super().__init__("key_request")
+        self.username = username
+
+
+class PublicKeyMessage(Message):
+    def __init__(self, username, public_key):
+        super().__init__("public_key")
+        self.username = username
+        self.public_key = public_key

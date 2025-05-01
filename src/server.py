@@ -1,16 +1,17 @@
-
 # server.py - Server implementation
 import socket
 import threading
 import json
 from message import RegistrationMessage, StatusMessage, UserListMessage, ChatMessage, ErrorMessage
+from color import COLORS, ColorManager
 
 class Client:
     """Represents a connected client"""
-    def __init__(self, socket, username, public_key):
+    def __init__(self, socket, username, public_key, color):
         self.socket = socket
         self.username = username
         self.public_key = public_key
+        self.color = color
 
 
 class ChatServer:
@@ -21,22 +22,23 @@ class ChatServer:
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.clients = {}  # username -> Client object
         self.lock = threading.Lock()
+        self.color_manager = ColorManager()
 
     def start(self):
         """Start the server and listen for connections"""
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(5)
-        print(f"[*] Server started on {self.host}:{self.port}")
+        print(f"{COLORS['GREEN']}[*] Server started on {self.host}:{self.port}{COLORS['RESET']}")
 
         try:
             while True:
                 client_socket, address = self.server_socket.accept()
-                print(f"[+] Connection from {address}")
-                client_handler = threading.Thread(target=self.handle_client, args=(client_socket,))
+                print(f"{COLORS['YELLOW']}[!] Connection from {address} (Not yet named){COLORS['RESET']}")
+                client_handler = threading.Thread(target=self.handle_client, args=(client_socket, address))
                 client_handler.daemon = True
                 client_handler.start()
         except KeyboardInterrupt:
-            print("[!] Server shutting down")
+            print(f"{COLORS['YELLOW']}[!] Server shutting down{COLORS['RESET']}")
         finally:
             self._cleanup()
 
@@ -49,7 +51,7 @@ class ChatServer:
                 pass
         self.server_socket.close()
 
-    def handle_client(self, client_socket):
+    def handle_client(self, client_socket, address):
         """Handle client connection and messages"""
         username = None
 
@@ -70,13 +72,26 @@ class ChatServer:
                         client_socket.close()
                         return
 
+                    # Get color for the user
+                    color = self.color_manager.get_user_color(username)
+                    
                     # Register client
-                    client = Client(client_socket, username, public_key)
+                    client = Client(client_socket, username, public_key, color)
                     self.clients[username] = client
 
                     # Send success response
                     status_msg = StatusMessage("success", "Registered successfully")
                     client_socket.send(status_msg.to_json().encode())
+
+                    # Determine color name for logging
+                    color_name = "Unknown"
+                    for name, code in COLORS.items():
+                        if code == color:
+                            color_name = name
+                            break
+
+                    # Log successful connection with color
+                    print(f"{COLORS['GREEN']}[+] Connection from {address} connected as {color}{username}{COLORS['RESET']} with color {color}{color_name}{COLORS['RESET']}")
 
                     # Broadcast user list update
                     self.broadcast_user_list()
@@ -106,9 +121,24 @@ class ChatServer:
                     else:
                         error_msg = ErrorMessage(f"User {recipient} not found")
                         client_socket.send(error_msg.to_json().encode())
+                
+                elif message_obj['type'] == 'key_request':
+                    # Handle request for another user's public key
+                    requested_user = message_obj['username']
+                    if requested_user in self.clients:
+                        # Send the public key to the requesting client
+                        key_data = {
+                            'type': 'public_key',
+                            'username': requested_user,
+                            'public_key': self.clients[requested_user].public_key
+                        }
+                        client_socket.send(json.dumps(key_data).encode())
+                    else:
+                        error_msg = ErrorMessage(f"User {requested_user} not found")
+                        client_socket.send(error_msg.to_json().encode())
 
         except Exception as e:
-            print(f"[!] Error handling client: {e}")
+            print(f"{COLORS['YELLOW']}[!] Error handling client: {e}{COLORS['RESET']}")
         finally:
             with self.lock:
                 if username and username in self.clients:
@@ -118,7 +148,7 @@ class ChatServer:
                 client_socket.close()
             except:
                 pass
-            print(f"[-] Connection closed for {username if username else 'unknown'}")
+            print(f"{COLORS['YELLOW']}[-] Connection closed for {username if username else 'unknown'}{COLORS['RESET']}")
 
     def broadcast_user_list(self):
         """Send updated user list to all clients"""
