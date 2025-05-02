@@ -5,7 +5,7 @@ import json
 import os
 from crypto import CryptoManager
 from message import RegistrationMessage, ChatMessage, ErrorMessage, KeyRequestMessage
-from color import ColorManager
+from color import ColorManager, COLORS
 
 class ChatClient:
     def __init__(self, server_host='localhost', server_port=9090):
@@ -77,9 +77,24 @@ class ChatClient:
                 message = json.loads(data.decode())
 
                 if message['type'] == 'user_list':
-                    self.users = message['users']
-                    # Only print the updated user list
-                    self.print_system_message("Online users: " + ", ".join(self.users))
+                    # self.users = message['users']
+                    # # Only print the updated user list
+                    # self.print_system_message("Online users: " + ", ".join(self.users))
+                    # message['users'] is now list of {username, color}
+                    self.users = [u['username'] for u in message['users']]
+
+                    # Overwrite our ColorManager map so it matches server
+                    for u in message['users']:
+                        self.color_manager.user_colors[u['username']] = u['color']
+
+                    # Log who’s online (with their color)
+                    display = "Online users: " + " ".join(
+                        f"{u['color']}{u['username']}{COLORS['RESET']}"
+                        for u in message['users']
+                    )
+                    self.print_system_message(display)
+
+
                     self.show_prompt()
 
                 elif message['type'] == 'public_key':

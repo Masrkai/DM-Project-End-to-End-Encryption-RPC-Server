@@ -152,7 +152,13 @@ class ChatServer:
 
     def broadcast_user_list(self):
         """Send updated user list to all clients"""
-        user_list = list(self.clients.keys())
+        # user_list = list(self.clients.keys())
+        # user_list_msg = UserListMessage(user_list)
+        # build list of {username, color}
+        user_list = [
+            {"username": uname, "color": client.color}
+            for uname, client in self.clients.items()
+        ]
         user_list_msg = UserListMessage(user_list)
         message_data = user_list_msg.to_json().encode()
 
