@@ -21,6 +21,28 @@ This end-to-end encrypted chat system implements:
    - Encrypts the session key with recipient's public key
    - Decrypts incoming messages using private key
 
+```raw
+
+User A (Sender)                  Server                  User B (Recipient)
+|                                 |                                 |
+| 1. Request B's public key       |                                 |
+|-------------------------------->|                                 |
+|                                 | 2. Return B's public key        |
+|<--------------------------------|                                 |
+|                                 |                                 |
+| 3. Encrypt session key (AES)    |                                 |
+|    with B's public key          |                                 |
+|                                 |                                 |
+| 4. Send encrypted message       |                                 |
+|    and session key              |                                 |
+|-------------------------------->| 5. Forward to B                |
+|                                 |-------------------------------->|
+|                                 |                                 | 6. Decrypt session key
+|                                 |                                 |    with B's private key
+|                                 |                                 | 7. Decrypt message
+
+```
+
 ### How to Use
 
 0. go to Main_chat
