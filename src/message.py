@@ -33,9 +33,6 @@ class StatusMessage(Message):
 
 
 class UserListMessage(Message):
-    # def __init__(self, users):
-    #     super().__init__("user_list")
-    #     self.users = users
     def __init__(self, users_with_colors):
         """
         users_with_colors: list of dicts
