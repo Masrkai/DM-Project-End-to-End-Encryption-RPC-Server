@@ -1,9 +1,9 @@
 # server.py - Server implementation
+import json
 import socket
 import threading
-import json
-from message import RegistrationMessage, StatusMessage, UserListMessage, ChatMessage, ErrorMessage
 from color import COLORS, ColorManager
+from message import RegistrationMessage, StatusMessage, UserListMessage, ChatMessage, ErrorMessage
 
 class Client:
     """Represents a connected client"""
