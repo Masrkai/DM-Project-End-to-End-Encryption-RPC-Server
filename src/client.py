@@ -1,11 +1,12 @@
 # client.py - Client implementation
+import os
+import json
 import socket
 import threading
-import json
-import os
+
 from crypto import CryptoManager
-from message import RegistrationMessage, ChatMessage, ErrorMessage, KeyRequestMessage
 from color import ColorManager, COLORS
+from message import RegistrationMessage, ChatMessage, ErrorMessage, KeyRequestMessage
 
 class ChatClient:
     def __init__(self, server_host='localhost', server_port=9090):
