@@ -78,56 +78,65 @@ class ChatClient:
                 message = json.loads(data.decode())
 
                 if message['type'] == 'user_list':
-                    # self.users = message['users']
-                    # # Only print the updated user list
-                    # self.print_system_message("Online users: " + ", ".join(self.users))
-                    # message['users'] is now list of {username, color}
                     self.users = [u['username'] for u in message['users']]
 
-                    # Overwrite our ColorManager map so it matches server
+                    # Update ColorManager with server-assigned colors
                     for u in message['users']:
                         self.color_manager.user_colors[u['username']] = u['color']
 
-                    # Log who’s online (with their color)
+                    # Display online users with their colors
                     display = "Online users: " + " ".join(
                         f"{u['color']}{u['username']}{COLORS['RESET']}"
                         for u in message['users']
                     )
                     self.print_system_message(display)
-
-
                     self.show_prompt()
 
                 elif message['type'] == 'public_key':
-                    # Store the public key
                     user = message['username']
                     public_key = message['public_key']
                     self.user_keys[user] = public_key
                     
-                    # Send any pending messages to this user
+                    # Send pending messages with full encryption details
                     if user in self.pending_messages and self.pending_messages[user]:
                         for pending_message in self.pending_messages[user]:
-                            self._send_encrypted_message(user, pending_message)
+                            success, encrypted_data = self._send_encrypted_message(user, pending_message)
+                            if success:
+                                self.print_user_message(self.username, pending_message)
+                                self.print_system_message("Full encrypted message details:")
+                                self.print_system_message(f"Encrypted message: {encrypted_data['encrypted_message']}")
+                                self.print_system_message(f"Encrypted key: {encrypted_data['encrypted_key']}")
+                                self.print_system_message(f"Nonce: {encrypted_data['nonce']}")
                         self.print_system_message(f"Sent pending message(s) to {user}")
-                        self.pending_messages[user] = []  # Clear pending messages
-                    
+                        self.pending_messages[user] = []
                     self.show_prompt()
 
                 elif message['type'] == 'message':
                     sender = message['sender']
 
-                    # Extract encrypted data
+                    # Show full encrypted components
+                    self.print_system_message(f"\nReceived raw encrypted data from {sender}:")
+                    self.print_system_message(f"Encrypted message: {message['encrypted_message']}")
+                    self.print_system_message(f"Encrypted key: {message['encrypted_key']}")
+                    self.print_system_message(f"Nonce: {message['nonce']}")
+
+                    # Decrypt and show plaintext
                     encrypted_data = {
                         'encrypted_message': message['encrypted_message'],
                         'encrypted_key': message['encrypted_key'],
                         'nonce': message['nonce']
                     }
+                    try:
+                        decrypted_message = self.crypto.decrypt_message(encrypted_data)
+                        self.print_system_message(f"\nDecryption successful for {sender}:")
+                        self.print_user_message(sender, decrypted_message)
+                    except Exception as e:
+                        self.print_system_message(f"\nDecryption failed: {str(e)}")
+                        self.print_system_message("Raw encrypted data was:")
+                        self.print_system_message(f"Encrypted message: {message['encrypted_message']}")
+                        self.print_system_message(f"Encrypted key: {message['encrypted_key']}")
+                        self.print_system_message(f"Nonce: {message['nonce']}")
 
-                    # Decrypt the message
-                    decrypted_message = self.crypto.decrypt_message(encrypted_data)
-
-                    # Print with the sender's color
-                    self.print_user_message(sender, decrypted_message)
                     self.show_prompt()
 
                 elif message['type'] == 'error':
@@ -135,10 +144,11 @@ class ChatClient:
                     self.show_prompt()
 
         except Exception as e:
-            if self.running:  # Only show error if not disconnected intentionally
+            if self.running:
                 self.print_system_message(f"Connection to server lost: {e}")
         finally:
             self.running = False
+
 
     def request_public_key(self, username):
         """Request public key for a specific user"""
@@ -165,10 +175,10 @@ class ChatClient:
             )
 
             self.socket.send(chat_msg.to_json().encode())
-            return True
+            return True, encrypted_data
         except Exception as e:
             self.print_system_message(f"Error sending encrypted message: {e}")
-            return False
+            return False, None
 
     def send_message(self, recipient, message):
         """Send a message to a recipient, requesting public key if needed"""
@@ -178,10 +188,14 @@ class ChatClient:
 
         # If we already have the public key, send the message immediately
         if recipient in self.user_keys:
-            success = self._send_encrypted_message(recipient, message)
+            success, encrypted_data = self._send_encrypted_message(recipient, message)
             if success:
                 # Echo the message to ourselves to show it was sent
                 self.print_user_message(self.username, message)
+                # Show encrypted details
+                self.print_system_message(f"Encrypted message (truncated): {encrypted_data['encrypted_message']}...")
+                self.print_system_message(f"Encrypted key (truncated): {encrypted_data['encrypted_key']}...")
+                self.print_system_message(f"Nonce (truncated): {encrypted_data['nonce']}...")
             return success
         
         # Otherwise, request the key and queue the message
