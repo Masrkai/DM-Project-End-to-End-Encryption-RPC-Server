@@ -43,6 +43,10 @@ User A (Sender)                  Server                  User B (Recipient)
 
 ```
 
+here is also a screenshot of it running:
+![Example](https://github.com/Masrkai/End-to-End-Encrypted_Chat-Server/blob/main/Docs/image.png "")
+
+
 ### How to Use
 
 0. go to Main_chat
