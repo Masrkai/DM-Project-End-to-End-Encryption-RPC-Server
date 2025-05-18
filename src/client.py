@@ -1,12 +1,11 @@
 # client.py - Client implementation
-import os
 import json
 import socket
 import threading
 
 from crypto import CryptoManager
 from color import ColorManager, COLORS
-from message import RegistrationMessage, ChatMessage, ErrorMessage, KeyRequestMessage
+from message import RegistrationMessage, ChatMessage, KeyRequestMessage
 
 class ChatClient:
     def __init__(self, server_host='localhost', server_port=9090):
@@ -16,11 +15,11 @@ class ChatClient:
         self.username = None
         self.users = []
         self.crypto = CryptoManager()
-        self.user_keys = {}  # username -> public_key
+        self.user_keys = {}                  # username -> public_key
         self.color_manager = ColorManager()  # Use the separate color manager
         self.running = False
         self.receive_thread = None
-        self.pending_messages = {}  # username -> [messages]
+        self.pending_messages = {}           # username -> [messages]
 
     def connect(self, username):
         """Connect to the server and register with username"""
@@ -96,7 +95,7 @@ class ChatClient:
                     user = message['username']
                     public_key = message['public_key']
                     self.user_keys[user] = public_key
-                    
+
                     # Send pending messages with full encryption details
                     if user in self.pending_messages and self.pending_messages[user]:
                         for pending_message in self.pending_messages[user]:
@@ -197,16 +196,16 @@ class ChatClient:
                 self.print_system_message(f"Encrypted key (truncated): {encrypted_data['encrypted_key']}...")
                 self.print_system_message(f"Nonce (truncated): {encrypted_data['nonce']}...")
             return success
-        
+
         # Otherwise, request the key and queue the message
         self.print_system_message(f"Requesting public key for {recipient}...")
         self.request_public_key(recipient)
-        
+
         # Store the message to send later when we get the key
         if recipient not in self.pending_messages:
             self.pending_messages[recipient] = []
         self.pending_messages[recipient].append(message)
-        
+
         self.print_system_message(f"Message queued and will be sent when {recipient}'s key is received")
         return True
 

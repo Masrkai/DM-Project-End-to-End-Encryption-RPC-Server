@@ -1,12 +1,13 @@
-import streamlit as st
-import socket
-import threading
+import time
 import json
 import queue
-import time
+import socket
+import threading
+import streamlit as st
+
+from color import ColorManager
 from crypto import CryptoManager
-from message import RegistrationMessage, ChatMessage, ErrorMessage, KeyRequestMessage
-from color import ColorManager, COLORS
+from message import RegistrationMessage, ChatMessage, KeyRequestMessage
 
 class StreamlitChatClient:
     def __init__(self, server_host='localhost', server_port=9090):
@@ -118,14 +119,14 @@ class StreamlitChatClient:
                     "message": message
                 })
             return success
-        
+
         self.message_queue.put({"type": "info", "message": f"Requesting public key for {recipient}..."})
         self.request_public_key(recipient)
-        
+
         if recipient not in self.pending_messages:
             self.pending_messages[recipient] = []
         self.pending_messages[recipient].append(message)
-        
+
         self.message_queue.put({"type": "info", "message": f"Message queued and will be sent when {recipient}'s key is received"})
         return True
 
@@ -160,37 +161,37 @@ def process_messages(client):
     try:
         while not client.message_queue.empty():
             message = client.message_queue.get_nowait()
-            
+
             # Add message to debug log
             st.session_state.debug.append(f"Received: {message['type']}")
-            
+
             if message['type'] == 'user_list':
                 # Update users list
                 new_users = [u['username'] for u in message['users']]
                 st.session_state.debug.append(f"User list update: {new_users}")
-                
+
                 if new_users != st.session_state.users:
                     st.session_state.users = new_users
-                    client.users = new_users 
+                    client.users = new_users
                     st.session_state.last_update = time.time()
                     st.rerun()
-                
+
                 # Update color mappings
                 for u in message['users']:
                     client.color_manager.user_colors[u['username']] = u['color']
-                
+
             elif message['type'] == 'public_key':
                 user = message['username']
                 public_key = message['public_key']
                 client.user_keys[user] = public_key
                 st.session_state.debug.append(f"Received public key for {user}")
-                
+
                 if user in client.pending_messages and client.pending_messages[user]:
                     for pending_message in client.pending_messages[user]:
                         client._send_encrypted_message(user, pending_message)
                     client.message_queue.put({"type": "info", "message": f"Sent pending message(s) to {user}"})
                     client.pending_messages[user] = []
-                
+
             elif message['type'] == 'message':
                 st.session_state.messages.append({
                     'sender': message['sender'],
@@ -202,7 +203,7 @@ def process_messages(client):
                 })
                 st.session_state.last_update = time.time()
                 st.rerun()
-                
+
             elif message['type'] in ['error', 'info']:
                 st.session_state.messages.append({
                     'sender': 'System',
@@ -215,18 +216,18 @@ def process_messages(client):
 
 def main():
     st.set_page_config(page_title="Secure Chat", page_icon="🔒", layout="wide")
-    
+
     initialize_session_state()
-    
+
     st.title("🔒 Secure Chat Application")
-    
+
     # Login section
     if not st.session_state.username:
         with st.form("login_form"):
             username = st.text_input("Enter your username:")
             server_host = st.text_input("Server Host:", value="localhost")
             server_port = st.number_input("Server Port:", value=9090, min_value=1, max_value=65535)
-            
+
             if st.form_submit_button("Connect"):
                 if username:
                     client = StreamlitChatClient(server_host, server_port)
@@ -238,11 +239,11 @@ def main():
                         st.error("Failed to connect to server")
                 else:
                     st.error("Username cannot be empty")
-    
+
     # Chat interface
     else:
         client = st.session_state.client
-        
+
         # Sidebar for user list
         with st.sidebar:
             st.subheader("Online Users")
@@ -254,16 +255,16 @@ def main():
                         if st.button(f"💬 {user}", key=f"user_{user}"):
                             st.session_state.selected_user = user
                             st.rerun()
-            
+
             # Debug information
             if st.checkbox("Show Debug Info"):
                 st.subheader("Debug Information")
                 for msg in st.session_state.debug[-10:]:  # Show last 10 debug messages
                     st.text(msg)
-        
+
         # Main chat area
         col1, col2 = st.columns([3, 1])
-        
+
         with col1:
             # Display messages
             for msg in st.session_state.messages:
@@ -271,7 +272,7 @@ def main():
                     st.info(msg['message'])
                 else:
                     st.text(f"{msg['sender']}: {msg['message']}")
-        
+
         with col2:
             # Message input
             if st.session_state.selected_user:
@@ -286,14 +287,14 @@ def main():
                     st.rerun()
             else:
                 st.info("Select a user from the sidebar to start chatting")
-        
+
         # Process messages
         process_messages(client)
-        
+
         # Auto-refresh every 2 seconds
         if time.time() - st.session_state.last_update > 2:
             st.rerun()
-        
+
         # Disconnect button
         if st.sidebar.button("Disconnect"):
             client.close()
@@ -301,4 +302,4 @@ def main():
             st.rerun()
 
 if __name__ == "__main__":
-    main() 
+    main()
