@@ -6,6 +6,15 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
+#? RSA Algorithm Steps:
+# 1. Choose two large prime numbers p and q
+# 2. Compute n = p * q (modulus for both public and private keys)
+# 3. Compute r = (p-1)*(q-1) (Euler's totient function also refered to as phi)
+# 4. Select public exponent e (common values: 3, 5, 17, or 65537)
+# 5. Compute private exponent d = e^(-1) mod r (modular inverse)
+#! Note: All operations must be performed with large integers for security
+
+
 class CryptoManager:
     def __init__(self):
         # Generate RSA key pair
